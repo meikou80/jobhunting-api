@@ -53,3 +53,8 @@ postgres_data/
 
 # Air live reload
 build-errors.log
+
+# Design documents (private)
+api-design.md
+db-design.md
+er-diagram.md

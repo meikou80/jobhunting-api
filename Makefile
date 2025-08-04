@@ -40,7 +40,7 @@ lint: ## コードの静的解析
 	golangci-lint run
 
 migrate: ## データベースマイグレーションを実行
-	@echo "マイグレーション機能は今後実装予定"
+	./scripts/migrate.sh
 
 seed: ## シードデータを投入
 	@echo "シード機能は今後実装予定"
