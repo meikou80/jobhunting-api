@@ -8,6 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+
+	"jobhunting-api/domain/validators"
+	"jobhunting-api/infra/database"
 )
 
 func main() {
@@ -16,15 +19,31 @@ func main() {
 		log.Println("No .env file found")
 	}
 
+	// バリデーターの初期化
+	validators.Init()
+
+	// データベース接続
+	if err := database.Init(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
 	// Ginエンジンの初期化
 	r := gin.Default()
 
 	// ヘルスチェックエンドポイント
 	r.GET("/health", func(c *gin.Context) {
+		// データベース接続チェック
+		dbStatus := "ok"
+		if err := database.Health(); err != nil {
+			dbStatus = "error"
+		}
+
 		c.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
-			"service": "jobhunting-api",
-			"version": "0.1.0",
+			"status":   "ok",
+			"service":  "jobhunting-api",
+			"version":  "0.1.0",
+			"database": dbStatus,
 		})
 	})
 
