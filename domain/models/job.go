@@ -6,88 +6,117 @@ import (
 	"time"
 )
 
-// Job 求人情報
+// Job 求人情報（統合モデル）
 type Job struct {
 	// 基本情報
-	ID          int     `json:"id" db:"id"`
-	CompanyID   *int    `json:"company_id" db:"company_id"`
-	Title       string  `json:"title" db:"title" validate:"required,max=300"`
-	Description *string `json:"description" db:"description"`
+	ID            int     `json:"id" gorm:"primaryKey;autoIncrement"`
+	CompanyName   string  `json:"company_name" gorm:"not null;size:200" validate:"required,max=200"`
+	PositionTitle string  `json:"position_title" gorm:"not null;size:300" validate:"required,max=300"`
+	Description   *string `json:"description" gorm:"type:text"`
+	Requirements  *string `json:"requirements" gorm:"type:text"`
+
+	// プラットフォーム情報（重要）
+	SourcePlatform string  `json:"source_platform" gorm:"not null;size:50" validate:"required,max=50"`
+	ExternalID     *string `json:"external_id" gorm:"size:200;uniqueIndex:idx_platform_external"`
+	SourceURL      *string `json:"source_url" gorm:"type:text" validate:"omitempty,url"`
 
 	// 勤務条件
-	SalaryMin      *int    `json:"salary_min" db:"salary_min"`
-	SalaryMax      *int    `json:"salary_max" db:"salary_max"`
-	Location       *string `json:"location" db:"location" validate:"omitempty,max=200"`
-	EmploymentType *string `json:"employment_type" db:"employment_type" validate:"omitempty,oneof=正社員 契約社員 業務委託"`
-	RemoteOption   *string `json:"remote_option" db:"remote_option" validate:"omitempty,oneof=リモート可 ハイブリッド 出社必須"`
-
-	// 外部情報
-	SourceSite *string `json:"source_site" db:"source_site" validate:"omitempty,max=100"`
-	SourceURL  *string `json:"source_url" db:"source_url" validate:"omitempty,url"`
-	ExternalID *string `json:"external_id" db:"external_id" validate:"omitempty,max=200"`
+	SalaryMin      *int    `json:"salary_min" gorm:"index"`
+	SalaryMax      *int    `json:"salary_max" gorm:"index"`
+	Location       *string `json:"location" gorm:"size:200" validate:"omitempty,max=200"`
+	EmploymentType *string `json:"employment_type" gorm:"size:50" validate:"omitempty,oneof=正社員 契約社員 業務委託"`
+	RemoteOption   *string `json:"remote_option" gorm:"size:50" validate:"omitempty,oneof=リモート可 ハイブリッド 出社必須"`
 
 	// 日程
-	PostedDate   *time.Time `json:"posted_date" db:"posted_date"`
-	DeadlineDate *time.Time `json:"deadline_date" db:"deadline_date"`
-	IsActive     bool       `json:"is_active" db:"is_active"`
+	PostedDate   *time.Time `json:"posted_date" gorm:"index"`
+	DeadlineDate *time.Time `json:"deadline_date"`
+	IsActive     bool       `json:"is_active" gorm:"default:true;index"`
 
-	// リレーション
-	Company *Company `json:"company,omitempty"`
+	// 個人管理
+	Status        string  `json:"status" gorm:"default:interested;size:50" validate:"omitempty,oneof=interested applied interview offer rejected withdrawn"`
+	Priority      int     `json:"priority" gorm:"default:3" validate:"min=1,max=5"`
+	PersonalNotes *string `json:"personal_notes" gorm:"type:text"`
+
+	// 重複管理
+	DuplicateGroupID    *string  `json:"duplicate_group_id" gorm:"type:uuid;index"`
+	IsPrimary           bool     `json:"is_primary" gorm:"default:true"`
+	DuplicateConfidence *float64 `json:"duplicate_confidence"`
 
 	// メタデータ
-	CreatedAt time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty" gorm:"index"`
 }
 
 // JobRequest 求人登録・更新リクエスト
 type JobRequest struct {
-	CompanyID      *int    `json:"company_id"`
-	Title          string  `json:"title" validate:"required,max=300"`
+	CompanyName    string  `json:"company_name" validate:"required,max=200"`
+	PositionTitle  string  `json:"position_title" validate:"required,max=300"`
 	Description    *string `json:"description"`
+	Requirements   *string `json:"requirements"`
+	SourcePlatform string  `json:"source_platform" validate:"required,max=50"`
+	ExternalID     *string `json:"external_id" validate:"omitempty,max=200"`
+	SourceURL      *string `json:"source_url" validate:"omitempty,url"`
 	SalaryMin      *int    `json:"salary_min" validate:"omitempty,min=0"`
 	SalaryMax      *int    `json:"salary_max" validate:"omitempty,min=0"`
 	Location       *string `json:"location" validate:"omitempty,max=200"`
 	EmploymentType *string `json:"employment_type" validate:"omitempty,oneof=正社員 契約社員 業務委託"`
 	RemoteOption   *string `json:"remote_option" validate:"omitempty,oneof=リモート可 ハイブリッド 出社必須"`
-	SourceSite     *string `json:"source_site" validate:"omitempty,max=100"`
-	SourceURL      *string `json:"source_url" validate:"omitempty,url"`
-	ExternalID     *string `json:"external_id" validate:"omitempty,max=200"`
 	PostedDate     *string `json:"posted_date" validate:"omitempty"`
 	DeadlineDate   *string `json:"deadline_date" validate:"omitempty"`
+	Priority       *int    `json:"priority" validate:"omitempty,min=1,max=5"`
+	PersonalNotes  *string `json:"personal_notes"`
 }
 
 // JobResponse 求人レスポンス（API用）
 type JobResponse struct {
-	ID                int              `json:"id"`
-	Title             string           `json:"title"`
-	Company           *CompanyResponse `json:"company,omitempty"`
-	SalaryRange       *string          `json:"salary_range"`
-	Location          *string          `json:"location"`
-	EmploymentType    *string          `json:"employment_type"`
-	PostedDate        *string          `json:"posted_date"`
-	ApplicationStatus *string          `json:"application_status"` // not_applied, applied
-	MyPriority        *int             `json:"my_priority"`
+	ID             int     `json:"id"`
+	CompanyName    string  `json:"company_name"`
+	PositionTitle  string  `json:"position_title"`
+	SourcePlatform string  `json:"source_platform"`
+	SalaryRange    *string `json:"salary_range"`
+	Location       *string `json:"location"`
+	EmploymentType *string `json:"employment_type"`
+	PostedDate     *string `json:"posted_date"`
+	Status         string  `json:"status"`
+	Priority       int     `json:"priority"`
+	HasDuplicates  bool    `json:"has_duplicates"`
+	DuplicateCount int     `json:"duplicate_count"`
 }
 
 // JobDetailResponse 求人詳細レスポンス
 type JobDetailResponse struct {
 	Job struct {
 		ID             int                  `json:"id"`
-		Title          string               `json:"title"`
+		CompanyName    string               `json:"company_name"`
+		PositionTitle  string               `json:"position_title"`
 		Description    *string              `json:"description"`
-		Company        *CompanyResponse     `json:"company"`
+		Requirements   *string              `json:"requirements"`
+		SourcePlatform string               `json:"source_platform"`
+		ExternalID     *string              `json:"external_id"`
+		SourceURL      *string              `json:"source_url"`
 		SalaryMin      *int                 `json:"salary_min"`
 		SalaryMax      *int                 `json:"salary_max"`
 		Location       *string              `json:"location"`
 		EmploymentType *string              `json:"employment_type"`
 		RemoteOption   *string              `json:"remote_option"`
-		SourceSite     *string              `json:"source_site"`
-		SourceURL      *string              `json:"source_url"`
 		PostedDate     *string              `json:"posted_date"`
 		DeadlineDate   *string              `json:"deadline_date"`
+		Status         string               `json:"status"`
+		Priority       int                  `json:"priority"`
+		PersonalNotes  *string              `json:"personal_notes"`
+		DuplicateJobs  []DuplicateJobInfo   `json:"duplicate_jobs,omitempty"`
 		Application    *ApplicationResponse `json:"application,omitempty"`
 	} `json:"job"`
+}
+
+// DuplicateJobInfo 重複求人情報
+type DuplicateJobInfo struct {
+	ID             int     `json:"id"`
+	SourcePlatform string  `json:"source_platform"`
+	ExternalID     *string `json:"external_id"`
+	SourceURL      *string `json:"source_url"`
+	Confidence     float64 `json:"confidence"`
 }
 
 // JobListResponse 求人一覧レスポンス
@@ -101,15 +130,15 @@ type JobListResponse struct {
 func (j *Job) ToResponse() JobResponse {
 	resp := JobResponse{
 		ID:             j.ID,
-		Title:          j.Title,
+		CompanyName:    j.CompanyName,
+		PositionTitle:  j.PositionTitle,
+		SourcePlatform: j.SourcePlatform,
 		Location:       j.Location,
 		EmploymentType: j.EmploymentType,
-	}
-
-	// 企業情報
-	if j.Company != nil {
-		companyResp := j.Company.ToResponse()
-		resp.Company = &companyResp
+		Status:         j.Status,
+		Priority:       j.Priority,
+		HasDuplicates:  j.DuplicateGroupID != nil,
+		DuplicateCount: 0, // 実際の重複数は別途計算が必要
 	}
 
 	// 年収範囲
@@ -130,12 +159,14 @@ func (j *Job) ToResponse() JobResponse {
 // JobFilter 求人検索フィルタ
 type JobFilter struct {
 	Keyword        *string `form:"keyword" validate:"omitempty,max=100"`
-	CompanyID      *int    `form:"company_id"`
+	Platform       *string `form:"platform" validate:"omitempty,max=50"`
+	CompanyName    *string `form:"company_name" validate:"omitempty,max=100"`
 	Location       *string `form:"location" validate:"omitempty,max=100"`
 	SalaryMin      *int    `form:"salary_min" validate:"omitempty,min=0"`
 	EmploymentType *string `form:"employment_type" validate:"omitempty,oneof=正社員 契約社員 業務委託"`
 	RemoteOption   *string `form:"remote_option" validate:"omitempty,oneof=リモート可 ハイブリッド 出社必須"`
-	AppliedStatus  *string `form:"applied_status" validate:"omitempty,oneof=not_applied applied all"`
+	Status         *string `form:"status" validate:"omitempty,oneof=interested applied interview offer rejected withdrawn"`
+	ShowDuplicates *bool   `form:"show_duplicates"`
 	Page           int     `form:"page" validate:"min=1" default:"1"`
 	Limit          int     `form:"limit" validate:"min=1,max=100" default:"20"`
 }

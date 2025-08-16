@@ -9,50 +9,59 @@ import (
 // UserProfile ユーザー設定
 type UserProfile struct {
 	// 基本情報
-	UserID      string  `json:"user_id" db:"user_id"`
-	DisplayName *string `json:"display_name" db:"display_name" validate:"omitempty,max=100"`
+	UserID      string  `json:"user_id" gorm:"primaryKey;type:uuid" validate:"required"`
+	DisplayName *string `json:"display_name" gorm:"size:100" validate:"omitempty,max=100"`
 
 	// 転職希望条件
-	DesiredSalaryMin      *int    `json:"desired_salary_min" db:"desired_salary_min" validate:"omitempty,min=0"`
-	DesiredSalaryMax      *int    `json:"desired_salary_max" db:"desired_salary_max" validate:"omitempty,min=0"`
-	DesiredLocation       *string `json:"desired_location" db:"desired_location" validate:"omitempty,max=200"`
-	DesiredEmploymentType *string `json:"desired_employment_type" db:"desired_employment_type" validate:"omitempty,max=50"`
+	DesiredSalaryMin      *int    `json:"desired_salary_min" gorm:"" validate:"omitempty,min=0"`
+	DesiredSalaryMax      *int    `json:"desired_salary_max" gorm:"" validate:"omitempty,min=0"`
+	DesiredLocation       *string `json:"desired_location" gorm:"size:200" validate:"omitempty,max=200"`
+	DesiredEmploymentType *string `json:"desired_employment_type" gorm:"size:50" validate:"omitempty,max=50"`
 
-	// 検索条件
-	DefaultKeywords   *string `json:"default_keywords" db:"default_keywords"`     // カンマ区切り
-	ExcludedCompanies *string `json:"excluded_companies" db:"excluded_companies"` // カンマ区切り
+	// 検索・フィルタ設定
+	DefaultKeywords   *string `json:"default_keywords" gorm:"type:text"`   // カンマ区切りキーワード
+	ExcludedCompanies *string `json:"excluded_companies" gorm:"type:text"` // 除外企業リスト
+	ActivePlatforms   *string `json:"active_platforms" gorm:"type:text"`   // 利用中プラットフォーム（カンマ区切り）
 
-	// 通知設定
-	EmailNotifications bool `json:"email_notifications" db:"email_notifications"`
+	// 機能設定
+	DuplicateDetectionEnabled bool `json:"duplicate_detection_enabled" gorm:"default:true"`
+	EmailNotifications        bool `json:"email_notifications" gorm:"default:true"`
+	AutoScrapingEnabled       bool `json:"auto_scraping_enabled" gorm:"default:false"`
 
 	// メタデータ
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // UserProfileRequest ユーザー設定更新リクエスト
 type UserProfileRequest struct {
-	DisplayName           *string `json:"display_name" validate:"omitempty,max=100"`
-	DesiredSalaryMin      *int    `json:"desired_salary_min" validate:"omitempty,min=0"`
-	DesiredSalaryMax      *int    `json:"desired_salary_max" validate:"omitempty,min=0"`
-	DesiredLocation       *string `json:"desired_location" validate:"omitempty,max=200"`
-	DesiredEmploymentType *string `json:"desired_employment_type" validate:"omitempty,max=50"`
-	DefaultKeywords       *string `json:"default_keywords"`
-	ExcludedCompanies     *string `json:"excluded_companies"`
-	EmailNotifications    *bool   `json:"email_notifications"`
+	DisplayName               *string `json:"display_name" validate:"omitempty,max=100"`
+	DesiredSalaryMin          *int    `json:"desired_salary_min" validate:"omitempty,min=0"`
+	DesiredSalaryMax          *int    `json:"desired_salary_max" validate:"omitempty,min=0"`
+	DesiredLocation           *string `json:"desired_location" validate:"omitempty,max=200"`
+	DesiredEmploymentType     *string `json:"desired_employment_type" validate:"omitempty,max=50"`
+	DefaultKeywords           *string `json:"default_keywords"`
+	ExcludedCompanies         *string `json:"excluded_companies"`
+	ActivePlatforms           *string `json:"active_platforms"`
+	DuplicateDetectionEnabled *bool   `json:"duplicate_detection_enabled"`
+	EmailNotifications        *bool   `json:"email_notifications"`
+	AutoScrapingEnabled       *bool   `json:"auto_scraping_enabled"`
 }
 
 // UserProfileResponse ユーザー設定レスポンス（API用）
 type UserProfileResponse struct {
 	Profile struct {
-		DisplayName           *string `json:"display_name"`
-		DesiredSalaryMin      *int    `json:"desired_salary_min"`
-		DesiredSalaryMax      *int    `json:"desired_salary_max"`
-		DesiredLocation       *string `json:"desired_location"`
-		DesiredEmploymentType *string `json:"desired_employment_type"`
-		DefaultKeywords       *string `json:"default_keywords"`
-		ExcludedCompanies     *string `json:"excluded_companies"`
-		EmailNotifications    bool    `json:"email_notifications"`
+		DisplayName               *string  `json:"display_name"`
+		DesiredSalaryMin          *int     `json:"desired_salary_min"`
+		DesiredSalaryMax          *int     `json:"desired_salary_max"`
+		DesiredLocation           *string  `json:"desired_location"`
+		DesiredEmploymentType     *string  `json:"desired_employment_type"`
+		DefaultKeywords           *string  `json:"default_keywords"`
+		ExcludedCompanies         *string  `json:"excluded_companies"`
+		ActivePlatforms           []string `json:"active_platforms"`
+		DuplicateDetectionEnabled bool     `json:"duplicate_detection_enabled"`
+		EmailNotifications        bool     `json:"email_notifications"`
+		AutoScrapingEnabled       bool     `json:"auto_scraping_enabled"`
 	} `json:"profile"`
 }
 
@@ -60,23 +69,29 @@ type UserProfileResponse struct {
 func (u *UserProfile) ToResponse() UserProfileResponse {
 	return UserProfileResponse{
 		Profile: struct {
-			DisplayName           *string `json:"display_name"`
-			DesiredSalaryMin      *int    `json:"desired_salary_min"`
-			DesiredSalaryMax      *int    `json:"desired_salary_max"`
-			DesiredLocation       *string `json:"desired_location"`
-			DesiredEmploymentType *string `json:"desired_employment_type"`
-			DefaultKeywords       *string `json:"default_keywords"`
-			ExcludedCompanies     *string `json:"excluded_companies"`
-			EmailNotifications    bool    `json:"email_notifications"`
+			DisplayName               *string  `json:"display_name"`
+			DesiredSalaryMin          *int     `json:"desired_salary_min"`
+			DesiredSalaryMax          *int     `json:"desired_salary_max"`
+			DesiredLocation           *string  `json:"desired_location"`
+			DesiredEmploymentType     *string  `json:"desired_employment_type"`
+			DefaultKeywords           *string  `json:"default_keywords"`
+			ExcludedCompanies         *string  `json:"excluded_companies"`
+			ActivePlatforms           []string `json:"active_platforms"`
+			DuplicateDetectionEnabled bool     `json:"duplicate_detection_enabled"`
+			EmailNotifications        bool     `json:"email_notifications"`
+			AutoScrapingEnabled       bool     `json:"auto_scraping_enabled"`
 		}{
-			DisplayName:           u.DisplayName,
-			DesiredSalaryMin:      u.DesiredSalaryMin,
-			DesiredSalaryMax:      u.DesiredSalaryMax,
-			DesiredLocation:       u.DesiredLocation,
-			DesiredEmploymentType: u.DesiredEmploymentType,
-			DefaultKeywords:       u.DefaultKeywords,
-			ExcludedCompanies:     u.ExcludedCompanies,
-			EmailNotifications:    u.EmailNotifications,
+			DisplayName:               u.DisplayName,
+			DesiredSalaryMin:          u.DesiredSalaryMin,
+			DesiredSalaryMax:          u.DesiredSalaryMax,
+			DesiredLocation:           u.DesiredLocation,
+			DesiredEmploymentType:     u.DesiredEmploymentType,
+			DefaultKeywords:           u.DefaultKeywords,
+			ExcludedCompanies:         u.ExcludedCompanies,
+			ActivePlatforms:           u.GetActivePlatformsList(),
+			DuplicateDetectionEnabled: u.DuplicateDetectionEnabled,
+			EmailNotifications:        u.EmailNotifications,
+			AutoScrapingEnabled:       u.AutoScrapingEnabled,
 		},
 	}
 }
@@ -167,6 +182,50 @@ func (u *UserProfile) SetExcludedCompaniesList(companies []string) {
 
 	result := strings.Join(filtered, ",")
 	u.ExcludedCompanies = &result
+}
+
+// GetActivePlatformsList カンマ区切りプラットフォームを配列に変換
+func (u *UserProfile) GetActivePlatformsList() []string {
+	if u.ActivePlatforms == nil || *u.ActivePlatforms == "" {
+		return []string{}
+	}
+
+	platforms := strings.Split(*u.ActivePlatforms, ",")
+	result := make([]string, 0, len(platforms))
+
+	for _, platform := range platforms {
+		platform = strings.TrimSpace(platform)
+		if platform != "" {
+			result = append(result, platform)
+		}
+	}
+
+	return result
+}
+
+// SetActivePlatformsList 配列をカンマ区切り文字列に変換
+func (u *UserProfile) SetActivePlatformsList(platforms []string) {
+	if len(platforms) == 0 {
+		u.ActivePlatforms = nil
+		return
+	}
+
+	// 空文字を除外
+	filtered := make([]string, 0, len(platforms))
+	for _, platform := range platforms {
+		platform = strings.TrimSpace(platform)
+		if platform != "" {
+			filtered = append(filtered, platform)
+		}
+	}
+
+	if len(filtered) == 0 {
+		u.ActivePlatforms = nil
+		return
+	}
+
+	result := strings.Join(filtered, ",")
+	u.ActivePlatforms = &result
 }
 
 // Value SQLドライバー用
