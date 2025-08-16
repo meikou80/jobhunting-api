@@ -116,6 +116,55 @@ func (r *userRepository) GetNotificationSettings(ctx context.Context, userID str
 	return profile.EmailNotifications, nil
 }
 
+// UpdateActivePlatforms 利用中プラットフォームを更新
+func (r *userRepository) UpdateActivePlatforms(ctx context.Context, userID string, platforms []string) error {
+	profile := &models.UserProfile{UserID: userID}
+	profile.SetActivePlatformsList(platforms)
+
+	return r.db.WithContext(ctx).
+		Model(&models.UserProfile{}).
+		Where("user_id = ?", userID).
+		Update("active_platforms", profile.ActivePlatforms).Error
+}
+
+// GetActivePlatforms 利用中プラットフォームを取得
+func (r *userRepository) GetActivePlatforms(ctx context.Context, userID string) ([]string, error) {
+	profile, err := r.GetProfile(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return profile.GetActivePlatformsList(), nil
+}
+
+// UpdateFeatureSettings 機能設定を更新
+func (r *userRepository) UpdateFeatureSettings(ctx context.Context, userID string, duplicateDetection, autoScraping bool) error {
+	updates := map[string]interface{}{
+		"duplicate_detection_enabled": duplicateDetection,
+		"auto_scraping_enabled":       autoScraping,
+	}
+
+	return r.db.WithContext(ctx).
+		Model(&models.UserProfile{}).
+		Where("user_id = ?", userID).
+		Updates(updates).Error
+}
+
+// GetFeatureSettings 機能設定を取得
+func (r *userRepository) GetFeatureSettings(ctx context.Context, userID string) (duplicateDetection bool, autoScraping bool, err error) {
+	var profile models.UserProfile
+	err = r.db.WithContext(ctx).
+		Select("duplicate_detection_enabled, auto_scraping_enabled").
+		Where("user_id = ?", userID).
+		First(&profile).Error
+
+	if err != nil {
+		return false, false, err
+	}
+
+	return profile.DuplicateDetectionEnabled, profile.AutoScrapingEnabled, nil
+}
+
 // Exists ユーザープロフィールの存在チェック
 func (r *userRepository) Exists(ctx context.Context, userID string) (bool, error) {
 	var count int64

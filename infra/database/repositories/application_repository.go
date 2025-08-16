@@ -48,8 +48,6 @@ func (r *applicationRepository) GetByIDWithRelations(ctx context.Context, id int
 	var application models.Application
 	err := r.db.WithContext(ctx).
 		Preload("Job").
-		Preload("Job.Company").
-		Preload("Company").
 		Where("applications.id = ? AND applications.deleted_at IS NULL", id).
 		First(&application).Error
 
@@ -132,7 +130,6 @@ func (r *applicationRepository) GetByUserIDWithRelations(ctx context.Context, us
 	query := r.db.WithContext(ctx).
 		Model(&models.Application{}).
 		Joins("LEFT JOIN jobs ON applications.job_id = jobs.id").
-		Joins("LEFT JOIN companies ON jobs.company_id = companies.id").
 		Where("applications.user_id = ? AND applications.deleted_at IS NULL", userID)
 
 	// フィルタ適用
@@ -147,8 +144,6 @@ func (r *applicationRepository) GetByUserIDWithRelations(ctx context.Context, us
 	offset := (filter.Page - 1) * filter.Limit
 	err := query.
 		Preload("Job").
-		Preload("Job.Company").
-		Preload("Company").
 		Offset(offset).
 		Limit(filter.Limit).
 		Order(r.getOrderBy(filter.Sort)).
@@ -276,7 +271,6 @@ func (r *applicationRepository) GetRecentActivity(ctx context.Context, userID st
 
 	err := r.db.WithContext(ctx).
 		Preload("Job").
-		Preload("Job.Company").
 		Where("user_id = ? AND deleted_at IS NULL", userID).
 		Order("updated_at DESC").
 		Limit(limit).
@@ -299,13 +293,13 @@ func (r *applicationRepository) GetRecentActivity(ctx context.Context, userID st
 // applyFilters フィルタを適用
 func (r *applicationRepository) applyFilters(query *gorm.DB, filter *models.ApplicationFilter) *gorm.DB {
 	if filter.Status != nil && *filter.Status != "" {
-		query = query.Where("status = ?", *filter.Status)
+		query = query.Where("applications.status = ?", *filter.Status)
 	}
-	if filter.Priority != nil {
-		query = query.Where("priority = ?", *filter.Priority)
+	if filter.AppliedVia != nil && *filter.AppliedVia != "" {
+		query = query.Where("applications.applied_via = ?", *filter.AppliedVia)
 	}
-	if filter.CompanyID != nil {
-		query = query.Where("company_id = ?", *filter.CompanyID)
+	if filter.CompanyName != nil && *filter.CompanyName != "" {
+		query = query.Where("jobs.company_name ILIKE ?", "%"+*filter.CompanyName+"%")
 	}
 
 	return query
@@ -314,18 +308,18 @@ func (r *applicationRepository) applyFilters(query *gorm.DB, filter *models.Appl
 // getOrderBy ソート順を取得
 func (r *applicationRepository) getOrderBy(sort *string) string {
 	if sort == nil {
-		return "updated_at DESC"
+		return "applications.updated_at DESC"
 	}
 
 	switch *sort {
 	case "applied_date_desc":
-		return "applied_date DESC"
-	case "priority_asc":
-		return "priority ASC, updated_at DESC"
+		return "applications.applied_date DESC"
+	case "status_asc":
+		return "applications.status ASC, applications.updated_at DESC"
 	case "updated_desc":
-		return "updated_at DESC"
+		return "applications.updated_at DESC"
 	default:
-		return "updated_at DESC"
+		return "applications.updated_at DESC"
 	}
 }
 

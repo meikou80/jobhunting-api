@@ -37,20 +37,6 @@ func (r *jobRepository) GetByID(ctx context.Context, id int) (*models.Job, error
 	return &job, nil
 }
 
-// GetByIDWithCompany IDで求人を取得（企業情報込み）
-func (r *jobRepository) GetByIDWithCompany(ctx context.Context, id int) (*models.Job, error) {
-	var job models.Job
-	err := r.db.WithContext(ctx).
-		Preload("Company").
-		Where("jobs.id = ? AND jobs.deleted_at IS NULL", id).
-		First(&job).Error
-
-	if err != nil {
-		return nil, err
-	}
-	return &job, nil
-}
-
 // Update 求人を更新
 func (r *jobRepository) Update(ctx context.Context, job *models.Job) error {
 	return r.db.WithContext(ctx).
@@ -92,42 +78,13 @@ func (r *jobRepository) List(ctx context.Context, filter *models.JobFilter) ([]*
 	return jobs, int(total), err
 }
 
-// ListWithCompany 求人一覧を取得（企業情報込み）
-func (r *jobRepository) ListWithCompany(ctx context.Context, filter *models.JobFilter) ([]*models.Job, int, error) {
-	var jobs []*models.Job
-	var total int64
-
-	query := r.db.WithContext(ctx).
-		Model(&models.Job{}).
-		Joins("LEFT JOIN companies ON jobs.company_id = companies.id").
-		Where("jobs.deleted_at IS NULL AND (companies.deleted_at IS NULL OR companies.id IS NULL)")
-
-	// フィルタ適用
-	query = r.applyFilters(query, filter)
-
-	// 総件数を取得
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// ページネーション
-	offset := (filter.Page - 1) * filter.Limit
-	err := query.
-		Preload("Company").
-		Offset(offset).
-		Limit(filter.Limit).
-		Order("jobs.posted_date DESC, jobs.created_at DESC").
-		Find(&jobs).Error
-
-	return jobs, int(total), err
-}
-
 // Search 求人をキーワード検索
 func (r *jobRepository) Search(ctx context.Context, query string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
 	err := r.db.WithContext(ctx).
-		Where("(title ILIKE ? OR description ILIKE ?) AND deleted_at IS NULL", "%"+query+"%", "%"+query+"%").
+		Where("(position_title ILIKE ? OR company_name ILIKE ? OR description ILIKE ?) AND deleted_at IS NULL",
+			"%"+query+"%", "%"+query+"%", "%"+query+"%").
 		Order("posted_date DESC").
 		Limit(50).
 		Find(&jobs).Error
@@ -135,12 +92,12 @@ func (r *jobRepository) Search(ctx context.Context, query string) ([]*models.Job
 	return jobs, err
 }
 
-// GetByCompanyID 企業IDで求人を取得
-func (r *jobRepository) GetByCompanyID(ctx context.Context, companyID int) ([]*models.Job, error) {
+// GetByCompanyName 企業名で求人を取得
+func (r *jobRepository) GetByCompanyName(ctx context.Context, companyName string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
 	err := r.db.WithContext(ctx).
-		Where("company_id = ? AND deleted_at IS NULL", companyID).
+		Where("company_name = ? AND deleted_at IS NULL", companyName).
 		Order("posted_date DESC").
 		Find(&jobs).Error
 
@@ -148,10 +105,10 @@ func (r *jobRepository) GetByCompanyID(ctx context.Context, companyID int) ([]*m
 }
 
 // GetByExternalID 外部IDで求人を取得
-func (r *jobRepository) GetByExternalID(ctx context.Context, sourceSite, externalID string) (*models.Job, error) {
+func (r *jobRepository) GetByExternalID(ctx context.Context, sourcePlatform, externalID string) (*models.Job, error) {
 	var job models.Job
 	err := r.db.WithContext(ctx).
-		Where("source_site = ? AND external_id = ? AND deleted_at IS NULL", sourceSite, externalID).
+		Where("source_platform = ? AND external_id = ? AND deleted_at IS NULL", sourcePlatform, externalID).
 		First(&job).Error
 
 	if err != nil {
@@ -162,9 +119,9 @@ func (r *jobRepository) GetByExternalID(ctx context.Context, sourceSite, externa
 
 // CreateOrUpdate 求人を作成または更新（外部連携用）
 func (r *jobRepository) CreateOrUpdate(ctx context.Context, job *models.Job) error {
-	if job.SourceSite != nil && job.ExternalID != nil {
+	if job.SourcePlatform != "" && job.ExternalID != nil {
 		// 既存の求人をチェック
-		existing, err := r.GetByExternalID(ctx, *job.SourceSite, *job.ExternalID)
+		existing, err := r.GetByExternalID(ctx, job.SourcePlatform, *job.ExternalID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return err
 		}
@@ -190,12 +147,12 @@ func (r *jobRepository) Count(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-// CountByCompany 企業別求人数を取得
-func (r *jobRepository) CountByCompany(ctx context.Context, companyID int) (int64, error) {
+// CountByPlatform プラットフォーム別求人数を取得
+func (r *jobRepository) CountByPlatform(ctx context.Context, platform string) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&models.Job{}).
-		Where("company_id = ? AND deleted_at IS NULL", companyID).
+		Where("source_platform = ? AND deleted_at IS NULL", platform).
 		Count(&count).Error
 	return count, err
 }
@@ -203,10 +160,14 @@ func (r *jobRepository) CountByCompany(ctx context.Context, companyID int) (int6
 // applyFilters フィルタを適用
 func (r *jobRepository) applyFilters(query *gorm.DB, filter *models.JobFilter) *gorm.DB {
 	if filter.Keyword != nil && *filter.Keyword != "" {
-		query = query.Where("(title ILIKE ? OR description ILIKE ?)", "%"+*filter.Keyword+"%", "%"+*filter.Keyword+"%")
+		query = query.Where("(position_title ILIKE ? OR company_name ILIKE ? OR description ILIKE ?)",
+			"%"+*filter.Keyword+"%", "%"+*filter.Keyword+"%", "%"+*filter.Keyword+"%")
 	}
-	if filter.CompanyID != nil {
-		query = query.Where("company_id = ?", *filter.CompanyID)
+	if filter.Platform != nil && *filter.Platform != "" {
+		query = query.Where("source_platform = ?", *filter.Platform)
+	}
+	if filter.CompanyName != nil && *filter.CompanyName != "" {
+		query = query.Where("company_name ILIKE ?", "%"+*filter.CompanyName+"%")
 	}
 	if filter.Location != nil && *filter.Location != "" {
 		query = query.Where("location ILIKE ?", "%"+*filter.Location+"%")
@@ -219,6 +180,12 @@ func (r *jobRepository) applyFilters(query *gorm.DB, filter *models.JobFilter) *
 	}
 	if filter.RemoteOption != nil && *filter.RemoteOption != "" {
 		query = query.Where("remote_option = ?", *filter.RemoteOption)
+	}
+	if filter.Status != nil && *filter.Status != "" {
+		query = query.Where("status = ?", *filter.Status)
+	}
+	if filter.ShowDuplicates != nil && !*filter.ShowDuplicates {
+		query = query.Where("is_primary = true")
 	}
 
 	return query
