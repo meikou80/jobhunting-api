@@ -5,10 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-
-	"jobhunting-api/infra/database/repositories"
-	"jobhunting-api/interface/controllers"
-	"jobhunting-api/usecase/services"
 )
 
 type Router struct {
@@ -37,28 +33,7 @@ func (r *Router) SetupRoutes() {
 		})
 	})
 
-	api := r.engine.Group("/api")
-	{
-		r.setupCompanyRoutes(api)
-	}
-}
-
-func (r *Router) setupCompanyRoutes(api *gin.RouterGroup) {
-	companyRepo := repositories.NewCompanyRepository(r.db)
-	companyService := services.NewCompanyService(companyRepo)
-	companyController := controllers.NewCompanyController(companyService)
-
-	companies := api.Group("/companies")
-	{
-		companies.POST("", companyController.CreateCompany)
-		companies.GET("", companyController.ListCompanies)
-		companies.GET("/search", companyController.SearchCompanies)
-		companies.GET("/:id", companyController.GetCompany)
-		companies.PUT("/:id", companyController.UpdateCompany)
-		companies.DELETE("/:id", companyController.DeleteCompany)
-	}
-
-	log.Println("Company routes registered")
+	// TODO: Phase 2でAPI routes (/api/v1) を追加
 }
 
 func (r *Router) GetEngine() *gin.Engine {

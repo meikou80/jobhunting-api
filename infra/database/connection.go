@@ -90,7 +90,6 @@ func AutoMigrate() error {
 
 	// モデルの自動マイグレーション
 	err := DB.AutoMigrate(
-		&models.Company{},
 		&models.Job{},
 		&models.Application{},
 		&models.UserProfile{},
