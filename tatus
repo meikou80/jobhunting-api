@@ -1,5 +1,0 @@
-[33md19053b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelop[m[33m, [m[1;31morigin/develop[m[33m)[m DB接続とリポジトリ層の実装
-[33m92a658d[m Goモデル構造体の作成
-[33m6531a4c[m DBマイグレーションファイル作成
-[33mc7e7a7d[m 設計書削除
-[33m97084b8[m[33m ([m[1;32mmaster[m[33m)[m Initial commit: Project setup with basic API structure

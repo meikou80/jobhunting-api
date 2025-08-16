@@ -55,6 +55,4 @@ postgres_data/
 build-errors.log
 
 # Design documents (private)
-api-design.md
-db-design.md
-er-diagram.md
+docs/
