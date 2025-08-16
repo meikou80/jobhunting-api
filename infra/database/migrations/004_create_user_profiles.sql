@@ -4,18 +4,21 @@ CREATE TABLE user_profiles (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name VARCHAR(100),
   
-  -- 転職希望条件（最小限）
+  -- 転職希望条件
   desired_salary_min INTEGER,
   desired_salary_max INTEGER,
   desired_location VARCHAR(200),
   desired_employment_type VARCHAR(50),
   
-  -- 検索条件（job_searchesの代替）
-  default_keywords TEXT, -- カンマ区切りのキーワード
-  excluded_companies TEXT, -- 除外企業リスト
+  -- 検索・フィルタ設定
+  default_keywords TEXT,                    -- カンマ区切りキーワード
+  excluded_companies TEXT,                  -- 除外企業リスト
+  active_platforms TEXT,                    -- 利用中プラットフォーム（カンマ区切り）
   
-  -- 通知設定（最小限）
+  -- 機能設定
+  duplicate_detection_enabled BOOLEAN DEFAULT true,
   email_notifications BOOLEAN DEFAULT true,
+  auto_scraping_enabled BOOLEAN DEFAULT false,
   
   -- メタデータ
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
