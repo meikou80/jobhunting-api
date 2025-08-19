@@ -47,7 +47,7 @@ func (c *JobController) CreateJob(ctx *gin.Context) {
 	if err != nil {
 		if err.Error() == "duplicate job found" {
 			ctx.JSON(http.StatusConflict, gin.H{
-				"error":      "Duplcate job detected",
+				"error":      "Duplicate job detected",
 				"duplicates": duplicates,
 			})
 			return
@@ -65,7 +65,7 @@ func (c *JobController) CreateJob(ctx *gin.Context) {
 	}
 
 	if len(duplicates) > 0 {
-		response["duplicates"] = duplicates
+		response["duplicates_warning"] = duplicates
 	}
 
 	ctx.JSON(http.StatusCreated, response)
@@ -145,7 +145,7 @@ func (c *JobController) GetJobDetail(ctx *gin.Context) {
 		})
 		return
 	}
-	duplicates, err := c.jobService.GetDuplicates(id)
+	duplicates, err := c.jobService.GetDuplicateJobs(id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch duplicate jobs",
@@ -158,7 +158,7 @@ func (c *JobController) GetJobDetail(ctx *gin.Context) {
 }
 
 // 求人更新API
-// UPDATE api/v1/jobs/:id
+// PUT api/v1/jobs/:id
 func (c *JobController) UpdateJob(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -236,4 +236,97 @@ func (c *JobController) DeleteJob(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Job deleted successfully",
 	})
+}
+
+// 求人重複チェックAPI
+// GET /api/v1/jobs/duplicates
+func (c *JobController) CheckDuplicates(ctx *gin.Context) {
+	var req models.JobRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	duplicates, err := c.jobService.FindDuplicates(&req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to check duplicates",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"has_duplicates":  len(duplicates) > 0,
+		"duplicate_count": len(duplicates),
+		"duplicates":      duplicates,
+	})
+}
+
+// プラットフォーム統計API
+// GET /api/v1/jobs/stats
+func (c *JobController) GetPlatformStats(ctx *gin.Context) {
+	stats, err := c.jobService.GetPlatformStats()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch platform stats",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, stats)
+}
+
+// ダッシュボードAPI
+// GET /api/v1/jobs/dashboard
+func (c *JobController) GetDashboard(ctx *gin.Context) {
+	dashboard, err := c.jobService.GetDashboard()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch dashboard data",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dashboard)
+}
+
+// buildJobDetailResponse 求人詳細レスポンス構築
+func (c *JobController) buildJobDetailResponse(job *models.Job, duplicates []models.DuplicateJobInfo) models.JobDetailResponse {
+	var response models.JobDetailResponse
+
+	response.Job.ID = job.ID
+	response.Job.CompanyName = job.CompanyName
+	response.Job.PositionTitle = job.PositionTitle
+	response.Job.Description = job.Description
+	response.Job.Requirements = job.Requirements
+	response.Job.SourcePlatform = job.SourcePlatform
+	response.Job.ExternalID = job.ExternalID
+	response.Job.SourceURL = job.SourceURL
+	response.Job.SalaryMin = job.SalaryMin
+	response.Job.SalaryMax = job.SalaryMax
+	response.Job.Location = job.Location
+	response.Job.EmploymentType = job.EmploymentType
+	response.Job.RemoteOption = job.RemoteOption
+	response.Job.Status = job.Status
+	response.Job.Priority = job.Priority
+	response.Job.PersonalNotes = job.PersonalNotes
+	response.Job.DuplicateJobs = duplicates
+
+	if job.PostedDate != nil {
+		postedDate := job.PostedDate.Format("2006-01-02")
+		response.Job.PostedDate = &postedDate
+	}
+
+	if job.DeadlineDate != nil {
+		deadlineDate := job.DeadlineDate.Format("2006-01-02")
+		response.Job.DeadlineDate = &deadlineDate
+	}
+
+	return response
 }
