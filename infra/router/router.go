@@ -51,15 +51,17 @@ func (r *Router) setupDependencies() {
 
 	// Service層の初期化（Repository注入）
 	profileService := services.NewProfileService(repos.User)
+	jobService := services.NewJobService(repos.Job)
 
 	// Controller層の初期化（Service注入）
 	profileController := controllers.NewProfileController(profileService)
+	jobController := controllers.NewJobController(jobService)
 
 	// Middleware初期化
 	authMiddleware := middleware.NewAuthMiddleware()
 
 	// APIルートグループ設定
-	r.setupAPIRoutes(authMiddleware, profileController)
+	r.setupAPIRoutes(authMiddleware, profileController, jobController)
 }
 
 // setupAPIRoutes API v1ルートの設定
@@ -67,6 +69,7 @@ func (r *Router) setupDependencies() {
 func (r *Router) setupAPIRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	profileController *controllers.ProfileController,
+	jobController *controllers.JobController,
 ) {
 	// API v1グループ
 	v1 := r.engine.Group("/api/v1")
@@ -86,10 +89,26 @@ func (r *Router) setupAPIRoutes(
 		profileGroup.PUT("/settings", profileController.UpdateUserSettings) // PUT /api/v1/profile/settings
 	}
 
-	// TODO: Phase 2で以下を追加
-	// - /api/v1/jobs (求人管理)
+	// Phase 2: 求人管理エンドポイント
+	// 設計思想: 求人管理の全機能で認証を必須とし、重複検知機能を統合
+	jobGroup := v1.Group("/jobs")
+	jobGroup.Use(authMiddleware.RequireAuth())
+	{
+		// 基本CRUD操作
+		jobGroup.POST("", jobController.CreateJob)       // POST /api/v1/jobs - 求人登録（重複チェック付き）
+		jobGroup.GET("", jobController.GetJobs)          // GET /api/v1/jobs - 求人一覧取得（フィルタ対応）
+		jobGroup.GET("/:id", jobController.GetJobDetail) // GET /api/v1/jobs/:id - 求人詳細取得
+		jobGroup.PUT("/:id", jobController.UpdateJob)    // PUT /api/v1/jobs/:id - 求人更新
+		jobGroup.DELETE("/:id", jobController.DeleteJob) // DELETE /api/v1/jobs/:id - 求人削除
+
+		// Phase 2の核心機能
+		jobGroup.POST("/check-duplicates", jobController.CheckDuplicates) // POST /api/v1/jobs/check-duplicates - 重複チェック
+		jobGroup.GET("/stats", jobController.GetPlatformStats)            // GET /api/v1/jobs/stats - プラットフォーム統計
+		jobGroup.GET("/dashboard", jobController.GetDashboard)            // GET /api/v1/jobs/dashboard - ダッシュボード
+	}
+
+	// TODO: Phase 3で以下を追加
 	// - /api/v1/applications (応募管理)
-	// - /api/v1/platforms (プラットフォーム管理)
 }
 
 func (r *Router) GetEngine() *gin.Engine {
