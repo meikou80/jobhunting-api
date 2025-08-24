@@ -6,9 +6,30 @@ import (
 
 	"github.com/joho/godotenv"
 
+	_ "jobhunting-api/docs" // swag initで生成される
 	"jobhunting-api/infra/database"
 	"jobhunting-api/infra/router"
 )
+
+// @title           転職サービス統合管理API
+// @version         1.0
+// @description     複数転職サービスの一元管理と重複防止を実現するAPI
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.example.com/support
+// @contact.email  support@example.com
+
+// @license.name  MIT
+// @license.url   http://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter the token with the `Bearer: ` prefix, e.g. "Bearer abcde12345".
 
 func main() {
 	// 環境変数の読み込み

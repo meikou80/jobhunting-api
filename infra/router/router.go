@@ -4,12 +4,16 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 
 	"jobhunting-api/infra/database/repositories"
 	"jobhunting-api/infra/middleware"
 	"jobhunting-api/interface/controllers"
 	"jobhunting-api/usecase/services"
+
+	_ "jobhunting-api/docs" // swag initで生成される
 )
 
 type Router struct {
@@ -38,6 +42,9 @@ func (r *Router) SetupRoutes() {
 			"message": "Job Hunting API is running",
 		})
 	})
+
+	// Swagger UI エンドポイント
+	r.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 依存性注入とコントローラー初期化
 	r.setupDependencies()
