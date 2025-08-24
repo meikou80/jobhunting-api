@@ -176,6 +176,22 @@ func formatSalaryRange(min, max int) string {
 	return fmt.Sprintf("%d万円〜%d万円", min/10000, max/10000)
 }
 
+// プラットフォーム定数
+var AvailablePlatforms = []string{
+	"doda",
+	"recruit",
+	"geekly",
+	"levtech",
+	"その他",
+}
+
+// ステータス定数
+var AvailableStatuses = []string{
+	"未対応",
+	"対応中",
+	"対応済み",
+}
+
 // Value SQLドライバー用
 func (j Job) Value() (driver.Value, error) {
 	return j.ID, nil

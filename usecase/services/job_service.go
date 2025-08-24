@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"jobhunting-api/domain/models"
@@ -111,7 +112,7 @@ func (s *JobService) DeleteJob(id int) error {
 }
 
 // FindDuplicates 重複求人検索
-func (s *JobService) FindDuplicates(req *models.JobRequest) ([]models.DupilcateJobInfo, error) {
+func (s *JobService) FindDuplicates(req *models.JobRequest) ([]models.DuplicateJobInfo, error) {
 	ctx := context.Background()
 	var duplicates []models.DuplicateJobInfo
 
@@ -197,11 +198,11 @@ func (s *JobService) GetDuplicateJobs(jobID int) ([]models.DuplicateJobInfo, err
 func (s *JobService) GetPlatformStats() (map[string]interface{}, error) {
 	ctx := context.Background()
 
-	platforms := []string("doda", "recruit", "geekly", "levtech", "その他")
+	platforms := models.AvailablePlatforms
 	platformStats := make(map[string]int64)
 
 	for _, platform := range platforms {
-		count, err = s.jobRepo.CountByPlatform(ctx, platform)
+		count, err := s.jobRepo.CountByPlatform(ctx, platform)
 		if err != nil {
 			return nil, fmt.Errorf("failed to count jobs for platform %s: %w", platform, err)
 		}
@@ -231,10 +232,10 @@ func (s *JobService) GetDashboard() (map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to count total jobs: %w", err)
 	}
 	statusStats := make(map[string]int)
-	statuses := []string("未対応", "対応中", "対応済み")
+	statuses := models.AvailableStatuses
 
 	for _, status := range statuses {
-		filter := &models.Jobfilter{
+		filter := &models.JobFilter{
 			Status: &status,
 			Page:   1,
 			Limit:  1000,
@@ -249,7 +250,7 @@ func (s *JobService) GetDashboard() (map[string]interface{}, error) {
 
 	platformStats, err := s.GetPlatformStats()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get platform stats: %W", err)
+		return nil, fmt.Errorf("failed to get platform stats: %w", err)
 	}
 
 	dashboard := map[string]interface{}{
@@ -262,4 +263,125 @@ func (s *JobService) GetDashboard() (map[string]interface{}, error) {
 	}
 
 	return dashboard, nil
+}
+
+// convertRequestToJob JobRequestからJobエンティティに変換
+func (s *JobService) convertRequestToJob(req *models.JobRequest) (*models.Job, error) {
+	job := &models.Job{
+		CompanyName:    req.CompanyName,
+		PositionTitle:  req.PositionTitle,
+		Description:    req.Description,
+		Requirements:   req.Requirements,
+		SourcePlatform: req.SourcePlatform,
+		ExternalID:     req.ExternalID,
+		SourceURL:      req.SourceURL,
+		SalaryMin:      req.SalaryMin,
+		SalaryMax:      req.SalaryMax,
+		Location:       req.Location,
+		EmploymentType: req.EmploymentType,
+		RemoteOption:   req.RemoteOption,
+		PersonalNotes:  req.PersonalNotes,
+		IsActive:       true,
+		Status:         "interested", // デフォルトステータス
+		Priority:       3,            // デフォルト優先度
+	}
+
+	if req.Priority != nil {
+		job.Priority = *req.Priority
+	}
+
+	if req.PostedDate != nil && *req.PostedDate != "" {
+		if postedDate, err := time.Parse("2006-01-02", *req.PostedDate); err == nil {
+			job.PostedDate = &postedDate
+		}
+	}
+
+	if req.DeadlineDate != nil && *req.DeadlineDate != "" {
+		if deadlineDate, err := time.Parse("2006-01-02", *req.DeadlineDate); err == nil {
+			job.DeadlineDate = &deadlineDate
+		}
+	}
+
+	return job, nil
+}
+
+// calculateDuplicateConfidence 重複度計算
+func (s *JobService) calculateDuplicateConfidence(req *models.JobRequest, existingJob *models.Job) float64 {
+	var score float64
+
+	// 会社名完全一致 (40%)
+	if strings.EqualFold(req.CompanyName, existingJob.CompanyName) {
+		score += 0.4
+	}
+
+	// 職種名類似度 (40%)
+	titleSimilarity := s.calculateTextSimilarity(req.PositionTitle, existingJob.PositionTitle)
+	score += titleSimilarity * 0.4
+
+	// プラットフォーム一致 (10%)
+	if req.SourcePlatform == existingJob.SourcePlatform {
+		score += 0.1
+	}
+
+	// 勤務地一致 (10%)
+	if req.Location != nil && existingJob.Location != nil {
+		if strings.EqualFold(*req.Location, *existingJob.Location) {
+			score += 0.1
+		}
+	}
+
+	return score
+}
+
+// calculateTextSimilarity テキスト類似度計算（簡易版）
+func (s *JobService) calculateTextSimilarity(text1, text2 string) float64 {
+	// 簡易的な類似度計算（Levenshtein距離ベース）
+	if text1 == text2 {
+		return 1.0
+	}
+
+	text1 = strings.ToLower(strings.TrimSpace(text1))
+	text2 = strings.ToLower(strings.TrimSpace(text2))
+
+	if text1 == text2 {
+		return 1.0
+	}
+
+	// 部分一致チェック
+	if strings.Contains(text1, text2) || strings.Contains(text2, text1) {
+		shorter := text1
+		longer := text2
+		if len(text1) > len(text2) {
+			shorter = text2
+			longer = text1
+		}
+		return float64(len(shorter)) / float64(len(longer))
+	}
+
+	// 単語レベルでの一致チェック
+	words1 := strings.Fields(text1)
+	words2 := strings.Fields(text2)
+
+	if len(words1) == 0 || len(words2) == 0 {
+		return 0.0
+	}
+
+	matchCount := 0
+	for _, word1 := range words1 {
+		for _, word2 := range words2 {
+			if word1 == word2 {
+				matchCount++
+				break
+			}
+		}
+	}
+
+	return float64(matchCount) / float64(max(len(words1), len(words2)))
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
