@@ -46,12 +46,11 @@ func (r *Router) SetupRoutes() {
 	// Swagger UI エンドポイント
 	r.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// 依存性注入とコントローラー初期化
+	// コントローラー初期化
 	r.setupDependencies()
 }
 
 // setupDependencies 依存関係の設定とAPIルート構築
-// 設計思想: Clean Architectureの依存関係を外側から内側に注入
 func (r *Router) setupDependencies() {
 	// Repository層の初期化
 	repos := repositories.NewRepositories(r.db)
@@ -74,7 +73,6 @@ func (r *Router) setupDependencies() {
 }
 
 // setupAPIRoutes API v1ルートの設定
-// 設計思想: バージョニング対応とミドルウェア適用の明確化
 func (r *Router) setupAPIRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	profileController *controllers.ProfileController,
@@ -85,7 +83,6 @@ func (r *Router) setupAPIRoutes(
 	v1 := r.engine.Group("/api/v1")
 
 	// 認証必須のプロフィール管理エンドポイント
-	// 設計思想: 全てのプロフィール操作で認証を必須とする
 	profileGroup := v1.Group("/profile")
 	profileGroup.Use(authMiddleware.RequireAuth())
 	{
@@ -100,7 +97,6 @@ func (r *Router) setupAPIRoutes(
 	}
 
 	// Phase 2: 求人管理エンドポイント
-	// 設計思想: 求人管理の全機能で認証を必須とし、重複検知機能を統合
 	jobGroup := v1.Group("/jobs")
 	jobGroup.Use(authMiddleware.RequireAuth())
 	{

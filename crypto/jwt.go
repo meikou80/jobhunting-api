@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// JWTClaims Supabase JWTトークンのクレーム
+// JWTClaims JWTトークンのクレーム
 type JWTClaims struct {
 	Sub   string `json:"sub"`   // ユーザーID (UUID)
 	Email string `json:"email"` // ユーザーEmail
@@ -17,13 +17,12 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// JWTValidator JWT検証の責任を持つ構造体
+// JWTValidator JWT検証用構造体
 type JWTValidator struct {
 	jwtSecret string
 }
 
 // NewJWTValidator JWT検証インスタンスを生成
-// 設計思想: 依存関係を明確化し、テスタビリティを向上
 func NewJWTValidator() *JWTValidator {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -37,10 +36,6 @@ func NewJWTValidator() *JWTValidator {
 }
 
 // ValidateToken JWT トークンを検証し、ユーザー情報を抽出
-// 設計思想:
-// - 単一責任: JWT検証のみに集中
-// - エラー詳細化: 問題特定を容易にする
-// - 型安全性: 構造化されたクレーム情報を返却
 func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 	// Bearerプリフィックスを除去
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
@@ -72,8 +67,7 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 	return claims, nil
 }
 
-// ExtractUserID トークンからユーザーIDのみを抽出（簡易版）
-// 設計思想: よく使われる操作を簡略化
+// ExtractUserID トークンからユーザーIDのみを抽出
 func (v *JWTValidator) ExtractUserID(tokenString string) (string, error) {
 	claims, err := v.ValidateToken(tokenString)
 	if err != nil {

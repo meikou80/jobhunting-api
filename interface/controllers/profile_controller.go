@@ -11,16 +11,11 @@ import (
 )
 
 // ProfileController ユーザープロフィール管理のコントローラー
-// 設計思想:
-// - 薄いコントローラー: ビジネスロジックはServiceに委譲
-// - HTTP層の責任: リクエスト/レスポンス変換、認証情報取得
-// - エラーハンドリング: HTTPステータスコードとJSON形式の一貫性
 type ProfileController struct {
 	profileService *services.ProfileService
 }
 
 // NewProfileController コンストラクタ
-// 設計思想: 依存性注入によりテスタビリティを向上
 func NewProfileController(profileService *services.ProfileService) *ProfileController {
 	return &ProfileController{
 		profileService: profileService,
@@ -29,10 +24,6 @@ func NewProfileController(profileService *services.ProfileService) *ProfileContr
 
 // GetProfile ユーザープロフィール取得
 // GET /api/v1/profile
-// 設計思想:
-// - 認証必須: JWTからユーザーIDを取得
-// - 存在チェック: プロフィール未作成の場合は404
-// - セキュリティ: 自分のプロフィールのみ取得可能
 func (pc *ProfileController) GetProfile(c *gin.Context) {
 	// 認証済みユーザーIDを取得
 	userID, exists := middleware.GetUserID(c)
@@ -72,10 +63,6 @@ func (pc *ProfileController) GetProfile(c *gin.Context) {
 
 // CreateProfile ユーザープロフィール作成
 // POST /api/v1/profile
-// 設計思想:
-// - 初回登録: Supabase認証後の初回プロフィール作成
-// - バリデーション: 必須フィールドと形式チェック
-// - 冪等性考慮: 既存プロフィールがある場合の処理
 func (pc *ProfileController) CreateProfile(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -127,10 +114,6 @@ func (pc *ProfileController) CreateProfile(c *gin.Context) {
 
 // UpdateProfile ユーザープロフィール更新
 // PUT /api/v1/profile
-// 設計思想:
-// - 部分更新対応: 提供されたフィールドのみを更新
-// - 楽観的ロック: 更新競合の検出
-// - 入力検証: 更新データの妥当性確認
 func (pc *ProfileController) UpdateProfile(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -178,10 +161,6 @@ func (pc *ProfileController) UpdateProfile(c *gin.Context) {
 
 // DeleteProfile ユーザープロフィール削除（論理削除）
 // DELETE /api/v1/profile
-// 設計思想:
-// - 論理削除: データの完全削除は避け、deleted_atで管理
-// - 関連データ考慮: 求人・応募データとの整合性
-// - 復旧可能性: 誤削除時の復旧を考慮
 func (pc *ProfileController) DeleteProfile(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -217,7 +196,6 @@ func (pc *ProfileController) DeleteProfile(c *gin.Context) {
 
 // GetUserSettings ユーザー設定取得
 // GET /api/v1/profile/settings
-// 設計思想: プロフィール情報と設定情報の分離
 func (pc *ProfileController) GetUserSettings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {

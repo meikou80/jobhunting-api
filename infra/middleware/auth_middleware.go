@@ -10,13 +10,11 @@ import (
 )
 
 // AuthMiddleware JWT認証ミドルウェア
-// 設計思想: 認証処理を横断的関心事として分離し、各エンドポイントで再利用可能にする
 type AuthMiddleware struct {
 	jwtValidator *crypto.JWTValidator
 }
 
 // NewAuthMiddleware 認証ミドルウェアのコンストラクタ
-// 設計思想: 依存性注入により、JWTValidator の実装を外部から注入可能
 func NewAuthMiddleware() *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtValidator: crypto.NewJWTValidator(),
@@ -24,10 +22,6 @@ func NewAuthMiddleware() *AuthMiddleware {
 }
 
 // RequireAuth 認証必須のミドルウェア
-// 設計思想:
-// - 明示的な認証要求: エンドポイントが認証を必要とすることを明確化
-// - 早期リターン: 認証失敗時は即座にエラーレスポンスを返却
-// - コンテキスト設定: 認証成功時はユーザー情報をコンテキストに格納
 func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Authorization ヘッダーからトークン抽出
@@ -63,8 +57,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		// ユーザー情報をコンテキストに設定（後続処理で利用可能）
-		// 設計思想: 型安全なコンテキストキーでデータ共有
+		// ユーザー情報をコンテキストに設定
 		c.Set("user_id", claims.Sub)
 		c.Set("user_email", claims.Email)
 		c.Set("user_role", claims.Role)
@@ -76,10 +69,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 }
 
 // OptionalAuth 認証任意のミドルウェア
-// 設計思想:
-// - 柔軟性: 認証されていてもいなくても処理を継続
-// - コンテキスト一貫性: 認証済みの場合は RequireAuth と同じ形式でデータ設定
-// - ログイン状態判定: 後続処理でログイン状態を判定可能
+// 認証されていなくても処理を継続する
 func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -111,10 +101,6 @@ func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 }
 
 // GetUserID コンテキストからユーザーIDを取得するヘルパー関数
-// 設計思想:
-// - DRY原則: 共通処理を関数化
-// - 型安全性: string型での取得を保証
-// - エラーハンドリング: 取得失敗時の適切な処理
 func GetUserID(c *gin.Context) (string, bool) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -126,7 +112,6 @@ func GetUserID(c *gin.Context) (string, bool) {
 }
 
 // GetUserClaims コンテキストから完全なユーザークレームを取得
-// 設計思想: より詳細なユーザー情報が必要な場合の拡張性を提供
 func GetUserClaims(c *gin.Context) (*crypto.JWTClaims, bool) {
 	claims, exists := c.Get("user_claims")
 	if !exists {
@@ -138,7 +123,6 @@ func GetUserClaims(c *gin.Context) (*crypto.JWTClaims, bool) {
 }
 
 // IsAuthenticated 認証状態の確認ヘルパー
-// 設計思想: OptionalAuth使用時の認証状態判定を簡略化
 func IsAuthenticated(c *gin.Context) bool {
 	authenticated, exists := c.Get("authenticated")
 	if !exists {
