@@ -175,3 +175,12 @@ func (r *userRepository) Exists(ctx context.Context, userID string) (bool, error
 
 	return count > 0, err
 }
+
+// UserRepository ユーザーリポジトリインターフェース
+type UserRepository interface {
+	Create(ctx context.Context, user *models.User) error
+	GetByID(ctx context.Context, id string) (*models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	Update(ctx context.Context, user *models.User) error
+	Delete(ctx context.Context, id string) error
+}

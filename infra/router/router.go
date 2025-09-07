@@ -59,16 +59,18 @@ func (r *Router) setupDependencies() {
 	// Service層の初期化（Repository注入）
 	profileService := services.NewProfileService(repos.User)
 	jobService := services.NewJobService(repos.Job)
+	authService := services.NewAuthService(repos.Auth) // AuthServiceを追加
 
 	// Controller層の初期化（Service注入）
 	profileController := controllers.NewProfileController(profileService)
 	jobController := controllers.NewJobController(jobService)
+	authController := controllers.NewAuthController(authService) // AuthControllerを追加
 
 	// Middleware初期化
 	authMiddleware := middleware.NewAuthMiddleware()
 
 	// APIルートグループ設定
-	r.setupAPIRoutes(authMiddleware, profileController, jobController)
+	r.setupAPIRoutes(authMiddleware, profileController, jobController, authController)
 }
 
 // setupAPIRoutes API v1ルートの設定
@@ -77,6 +79,7 @@ func (r *Router) setupAPIRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	profileController *controllers.ProfileController,
 	jobController *controllers.JobController,
+	authController *controllers.AuthController,
 ) {
 	// API v1グループ
 	v1 := r.engine.Group("/api/v1")
@@ -116,6 +119,22 @@ func (r *Router) setupAPIRoutes(
 
 	// TODO: Phase 3で以下を追加
 	// - /api/v1/applications (応募管理)
+
+	// 認証エンドポイント（認証不要）
+	authGroup := v1.Group("/auth")
+	{
+		authGroup.POST("/register", authController.Register) // POST /api/v1/auth/register
+		authGroup.POST("/login", authController.Login)       // POST /api/v1/auth/login
+		authGroup.POST("/logout", authController.Logout)     // POST /api/v1/auth/logout
+	}
+
+	// 認証必須の認証エンドポイント
+	authSecureGroup := v1.Group("/auth")
+	authSecureGroup.Use(authMiddleware.RequireAuth())
+	{
+		authSecureGroup.GET("/me", authController.GetMe)              // GET /api/v1/auth/me
+		authSecureGroup.POST("/refresh", authController.RefreshToken) // POST /api/v1/auth/refresh
+	}
 }
 
 func (r *Router) GetEngine() *gin.Engine {

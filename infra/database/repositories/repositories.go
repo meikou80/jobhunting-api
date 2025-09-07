@@ -11,6 +11,7 @@ type Repositories struct {
 	Job         repositories.JobRepository
 	Application repositories.ApplicationRepository
 	User        repositories.UserRepository
+	Auth        repositories.AuthRepository
 }
 
 // NewRepositories 全リポジトリのコンストラクタ
@@ -19,5 +20,6 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Job:         NewJobRepository(db),
 		Application: NewApplicationRepository(db),
 		User:        NewUserRepository(db),
+		Auth:        NewAuthRepository(db),
 	}
 }

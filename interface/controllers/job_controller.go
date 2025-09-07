@@ -23,8 +23,19 @@ func NewJobController(jobService *services.JobService) *JobController {
 	}
 }
 
-// 求人登録API
-// POST /api/v1/jobs
+// CreateJob 求人登録
+// @Summary 求人情報を登録
+// @Description 新しい求人情報を登録します。重複チェックも同時に行います。
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Param job body models.JobRequest true "求人情報"
+// @Success 201 {object} map[string]interface{} "登録成功"
+// @Failure 400 {object} map[string]interface{} "バリデーションエラー"
+// @Failure 409 {object} map[string]interface{} "重複データ検出"
+// @Failure 500 {object} map[string]interface{} "サーバーエラー"
+// @Security BearerAuth
+// @Router /jobs [post]
 func (c *JobController) CreateJob(ctx *gin.Context) {
 	var req models.JobRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -71,8 +82,28 @@ func (c *JobController) CreateJob(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, response)
 }
 
-// 求人一覧取得API
-// GET /api/v1/jobs
+// GetJobs 求人一覧取得
+// @Summary 求人一覧を取得
+// @Description フィルタ条件に基づいて求人一覧を取得します
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Param keyword query string false "キーワード検索"
+// @Param platform query string false "プラットフォーム"
+// @Param company_name query string false "会社名"
+// @Param location query string false "勤務地"
+// @Param salary_min query int false "最低年収"
+// @Param employment_type query string false "雇用形態"
+// @Param remote_option query string false "リモート可否"
+// @Param status query string false "応募状況"
+// @Param show_duplicates query bool false "重複求人も表示"
+// @Param page query int false "ページ番号" default(1)
+// @Param limit query int false "取得件数" default(20)
+// @Success 200 {object} models.JobListResponse "求人一覧"
+// @Failure 400 {object} map[string]interface{} "リクエストエラー"
+// @Failure 500 {object} map[string]interface{} "サーバーエラー"
+// @Security BearerAuth
+// @Router /jobs [get]
 func (c *JobController) GetJobs(ctx *gin.Context) {
 	var filter models.JobFilter
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
@@ -120,8 +151,19 @@ func (c *JobController) GetJobs(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
-// 求人詳細取得API
-// GET /api/v1/jobs/:id
+// GetJobDetail 求人詳細取得
+// @Summary 求人詳細を取得
+// @Description 指定されたIDの求人詳細を取得します（重複求人情報含む）
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Param id path int true "求人ID"
+// @Success 200 {object} models.JobDetailResponse "求人詳細"
+// @Failure 400 {object} map[string]interface{} "無効なID"
+// @Failure 404 {object} map[string]interface{} "求人が見つからない"
+// @Failure 500 {object} map[string]interface{} "サーバーエラー"
+// @Security BearerAuth
+// @Router /jobs/{id} [get]
 func (c *JobController) GetJobDetail(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -238,8 +280,18 @@ func (c *JobController) DeleteJob(ctx *gin.Context) {
 	})
 }
 
-// 求人重複チェックAPI
-// GET /api/v1/jobs/duplicates
+// CheckDuplicates 重複チェック
+// @Summary 求人の重複をチェック
+// @Description 求人情報から潜在的な重複を検出します
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Param job body models.JobRequest true "チェックする求人情報"
+// @Success 200 {object} map[string]interface{} "重複チェック結果"
+// @Failure 400 {object} map[string]interface{} "バリデーションエラー"
+// @Failure 500 {object} map[string]interface{} "サーバーエラー"
+// @Security BearerAuth
+// @Router /jobs/check-duplicates [post]
 func (c *JobController) CheckDuplicates(ctx *gin.Context) {
 	var req models.JobRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -266,8 +318,16 @@ func (c *JobController) CheckDuplicates(ctx *gin.Context) {
 	})
 }
 
-// プラットフォーム統計API
-// GET /api/v1/jobs/stats
+// GetPlatformStats プラットフォーム別統計
+// @Summary プラットフォーム別統計を取得
+// @Description 各プラットフォームの求人数や応募状況の統計を取得します
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "プラットフォーム統計"
+// @Failure 500 {object} map[string]interface{} "サーバーエラー"
+// @Security BearerAuth
+// @Router /jobs/stats [get]
 func (c *JobController) GetPlatformStats(ctx *gin.Context) {
 	stats, err := c.jobService.GetPlatformStats()
 	if err != nil {
@@ -281,8 +341,16 @@ func (c *JobController) GetPlatformStats(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, stats)
 }
 
-// ダッシュボードAPI
-// GET /api/v1/jobs/dashboard
+// GetDashboard ダッシュボード情報
+// @Summary ダッシュボード情報を取得
+// @Description 求人統合管理のサマリー情報を取得します
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "ダッシュボード情報"
+// @Failure 500 {object} map[string]interface{} "サーバーエラー"
+// @Security BearerAuth
+// @Router /jobs/dashboard [get]
 func (c *JobController) GetDashboard(ctx *gin.Context) {
 	dashboard, err := c.jobService.GetDashboard()
 	if err != nil {

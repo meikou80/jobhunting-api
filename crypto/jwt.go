@@ -25,7 +25,7 @@ type JWTValidator struct {
 // NewJWTValidator JWT検証インスタンスを生成
 // 設計思想: 依存関係を明確化し、テスタビリティを向上
 func NewJWTValidator() *JWTValidator {
-	jwtSecret := os.Getenv("SUPABASE_JWT_SECRET")
+	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		// 開発環境でのデフォルト値（本番では必須）
 		jwtSecret = "your-256-bit-secret"

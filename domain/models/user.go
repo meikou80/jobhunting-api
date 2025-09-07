@@ -232,3 +232,19 @@ func (u *UserProfile) SetActivePlatformsList(platforms []string) {
 func (u UserProfile) Value() (driver.Value, error) {
 	return u.UserID, nil
 }
+
+// User 認証用ユーザーエンティティ
+type User struct {
+	ID           string     `json:"id" gorm:"primaryKey;type:uuid"`
+	Email        string     `json:"email" gorm:"uniqueIndex;not null"`
+	PasswordHash string     `json:"-" gorm:"not null"` // JSONには含めない
+	DisplayName  *string    `json:"display_name" gorm:"size:100"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	DeletedAt    *time.Time `json:"deleted_at" gorm:"index"`
+}
+
+// TableName テーブル名を指定
+func (User) TableName() string {
+	return "users"
+}
