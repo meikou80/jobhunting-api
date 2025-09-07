@@ -25,14 +25,14 @@ func NewJobController(jobService *services.JobService) *JobController {
 
 // CreateJob 求人登録
 // @Summary 求人情報を登録
-// @Description 新しい求人情報を登録します。重複チェックも同時に行います。
+// @Description 新しい求人情報を登録します
 // @Tags jobs
 // @Accept json
 // @Produce json
 // @Param job body models.JobRequest true "求人情報"
 // @Success 201 {object} map[string]interface{} "登録成功"
 // @Failure 400 {object} map[string]interface{} "バリデーションエラー"
-// @Failure 409 {object} map[string]interface{} "重複データ検出"
+// @Failure 409 {object} map[string]interface{} "重複データ"
 // @Failure 500 {object} map[string]interface{} "サーバーエラー"
 // @Security BearerAuth
 // @Router /jobs [post]
@@ -282,7 +282,7 @@ func (c *JobController) DeleteJob(ctx *gin.Context) {
 
 // CheckDuplicates 重複チェック
 // @Summary 求人の重複をチェック
-// @Description 求人情報から潜在的な重複を検出します
+// @Description 求人情報の重複をチェックします
 // @Tags jobs
 // @Accept json
 // @Produce json
@@ -343,7 +343,7 @@ func (c *JobController) GetPlatformStats(ctx *gin.Context) {
 
 // GetDashboard ダッシュボード情報
 // @Summary ダッシュボード情報を取得
-// @Description 求人統合管理のサマリー情報を取得します
+// @Description 求人の概要情報を取得します
 // @Tags jobs
 // @Accept json
 // @Produce json

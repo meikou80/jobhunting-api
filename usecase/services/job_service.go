@@ -305,7 +305,7 @@ func (s *JobService) convertRequestToJob(req *models.JobRequest) (*models.Job, e
 	return job, nil
 }
 
-// calculateDuplicateConfidence 重複度計算
+// calculateDuplicateConfidence 重複チェック
 func (s *JobService) calculateDuplicateConfidence(req *models.JobRequest, existingJob *models.Job) float64 {
 	var score float64
 
@@ -333,9 +333,9 @@ func (s *JobService) calculateDuplicateConfidence(req *models.JobRequest, existi
 	return score
 }
 
-// calculateTextSimilarity テキスト類似度計算（簡易版）
+// calculateTextSimilarity テキスト比較
 func (s *JobService) calculateTextSimilarity(text1, text2 string) float64 {
-	// 簡易的な類似度計算（Levenshtein距離ベース）
+	// 文字列の類似性チェック
 	if text1 == text2 {
 		return 1.0
 	}

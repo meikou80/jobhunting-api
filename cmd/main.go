@@ -11,7 +11,7 @@ import (
 	"jobhunting-api/infra/router"
 )
 
-// @title           転職サービス統合管理API
+// @title           転職活動管理API
 // @version         1.0
 // @description     複数転職サービスの一元管理と重複防止を実現するAPI
 // @termsOfService  http://swagger.io/terms/
